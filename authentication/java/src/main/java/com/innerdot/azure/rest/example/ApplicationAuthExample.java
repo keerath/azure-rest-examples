@@ -30,9 +30,12 @@ public class ApplicationAuthExample {
     private final static String ARM_ENDPOINT = "https://management.azure.com/";
 
     public static void main(String[] args) throws Exception {
-    	if(args.length != 5) {
+    	if((!args[0].equals("service-principal") && !args[0].equals("user")) || 
+    			(args[0].equals("user") && args.length != 6) ||
+    			(args[0].equals("service-principal") && args.length != 5)) {
     		System.out.println("Usage:");
-    		System.out.println(" <username> <password> <tenant id> <client id> <subscription id>");
+    		System.out.println(" user <username> <password> <client id> <tenant id> <subscription id>");
+    		System.out.println(" service-principal <password> <client id> <tenant id> <subscription id>");
     		System.exit(1);
     	}
 
@@ -42,13 +45,15 @@ public class ApplicationAuthExample {
     	String clientId = null;
     	String subscriptionId = null;
     	
-    	int idx = 0;
-	    username = args[idx++];
+    	int idx = 1;
+    	if(args[0].equals("user")) {
+		    username = args[idx++];
+		}
     	credential = args[idx++];
-    	tenantId = args[idx++];
     	clientId = args[idx++];
+    	tenantId = args[idx++];
     	subscriptionId = args[idx++];
-
+    	
         // use adal to Authenticate
         AuthenticationContext context = null;
         AuthenticationResult result = null;
@@ -61,8 +66,13 @@ public class ApplicationAuthExample {
                                                 false, 
                                                 service);
             Future<AuthenticationResult> future = null;
-            future = context.acquireToken(ARM_ENDPOINT, clientId,
-                                          username, credential, null);
+            if(username == null) {
+	            ClientCredential cred = new ClientCredential(clientId, credential);
+	            future = context.acquireToken(ARM_ENDPOINT, cred, null);
+	        } else {
+            	future = context.acquireToken(ARM_ENDPOINT, clientId,
+            	                              username, credential, null);
+            }
             result = future.get();
         } catch (Exception ex) {
         	System.out.println("Exception occurred:");
@@ -84,7 +94,6 @@ public class ApplicationAuthExample {
                     .setConnectionTimeout(httpClient.getParams(), 10000);
             HttpGet httpGet = new HttpGet(url);
             httpGet.addHeader("Authorization", "Bearer " + result.getAccessToken());
-            //httpGet.addHeader("User-Agent", "WindowsAzureXplatCLI/0.9.5");
             HttpResponse response = httpClient.execute(httpGet);
             HttpEntity entity = response.getEntity();
             InputStream instream = entity.getContent();
