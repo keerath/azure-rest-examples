@@ -48,11 +48,16 @@ public class ApplicationAuthExample {
     	int idx = 1;
     	if(args[0].equals("user")) {
 		    username = args[idx++];
+            System.out.println("username: " + username);
 		}
     	credential = args[idx++];
     	clientId = args[idx++];
     	tenantId = args[idx++];
     	subscriptionId = args[idx++];
+        System.out.println("credential: " + credential);
+        System.out.println("clientId: " + clientId);
+    	System.out.println("tenantId: " + tenantId);
+    	System.out.println("subscriptionId: " + subscriptionId);
     	
         // use adal to Authenticate
         AuthenticationContext context = null;

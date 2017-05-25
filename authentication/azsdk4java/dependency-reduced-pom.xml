@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.innerdot.azure.rest.example</groupId>
-  <artifactId>azure-rest-authentication</artifactId>
+  <groupId>com.innerdot.azuresdk.rest.example</groupId>
+  <artifactId>azuresdk-rest-authentication</artifactId>
   <name>java</name>
   <version>0.0.1</version>
   <url>http://maven.apache.org</url>
@@ -28,12 +28,25 @@
                   </excludes>
                 </filter>
               </filters>
+              <transformers>
+                <transformer>
+                  <mainClass>com.innerdot.azuresdk.rest.example.ApplicationAuthExample</mainClass>
+                </transformer>
+              </transformers>
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
+  <repositories>
+    <repository>
+      <snapshots />
+      <id>adx-snapshots</id>
+      <name>Azure ADX Snapshots</name>
+      <url>http://adxsnapshots.azurewebsites.net/</url>
+    </repository>
+  </repositories>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
