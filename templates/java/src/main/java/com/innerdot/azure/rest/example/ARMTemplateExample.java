@@ -40,7 +40,7 @@ import mjson.Json;
 public class ARMTemplateExample {
     private final static String AUTHORIZATION_ENDPOINT = "https://login.microsoftonline.com/";
     private final static String ARM_ENDPOINT = "https://management.azure.com/";
-    
+
     // do the put or post (deploy or validate) ad simply return success or failure.
     // note that in the case of validate, the response body actually will contain
     // information about what is wrong with the template.  
@@ -50,11 +50,11 @@ public class ARMTemplateExample {
             HttpConnectionParams
                     .setConnectionTimeout(httpClient.getParams(), 10000);
             HttpEntityEnclosingRequestBase httpOp = null;
-            if(isDeploy) {
+            if (isDeploy) {
                 httpOp = new HttpPut(url);
             } else {
                 httpOp = new HttpPost(url);
-            } 
+            }
             httpOp.addHeader("Accept", "application/json");
             httpOp.addHeader("Content-Type", "application/json");
             httpOp.addHeader("Authorization", "Bearer " + authToken);
@@ -63,15 +63,46 @@ public class ARMTemplateExample {
             httpOp.setEntity(entity);
             HttpResponse response = httpClient.execute(httpOp);
             int statusCode = response.getStatusLine().getStatusCode();
+
+            System.out.println(getStringFromInputStream(response.getEntity().getContent()));
             return (statusCode / 100) == 2 ? true : false;
-        } catch(IOException ex) {
+        } catch (IOException ex) {
             System.out.println("Deploy/validate failed.");
             ex.printStackTrace();
         }
-        
+
         return false;
     }
-    
+
+    private static String getStringFromInputStream(InputStream is) {
+
+        BufferedReader br = null;
+        StringBuilder sb = new StringBuilder();
+
+        String line;
+        try {
+
+            br = new BufferedReader(new InputStreamReader(is));
+            while ((line = br.readLine()) != null) {
+                sb.append(line);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return sb.toString();
+
+    }
+
     private static String read(InputStream in) throws IOException {
         StringBuilder sb = new StringBuilder();
         BufferedReader r = new BufferedReader(new InputStreamReader(in), 1000);
@@ -81,10 +112,10 @@ public class ARMTemplateExample {
         in.close();
         return sb.toString();
     }
-    
+
     private static Json checkStatus(String url, String authToken) {
         Json result = null;
-        
+
         try {
             final HttpClient httpClient = new DefaultHttpClient();
             HttpConnectionParams
@@ -96,133 +127,110 @@ public class ARMTemplateExample {
             httpOp.addHeader("Authorization", "Bearer " + authToken);
             HttpResponse response = httpClient.execute(httpOp);
             int statusCode = response.getStatusLine().getStatusCode();
-            
-            if((statusCode / 100) == 2) {
+
+            if ((statusCode / 100) == 2) {
                 HttpEntity entity = response.getEntity();
                 InputStream instream = entity.getContent();
                 result = Json.read(read(instream));
             }
-        } catch(IOException ex) {
+        } catch (IOException ex) {
             System.out.println("Check status failed.");
             ex.printStackTrace();
         }
-        
+
         return result;
     }
 
     public static void main(String[] args) throws Exception {
-    	if((!args[0].equals("deploy") && !args[0].equals("validate") && !args[0].equals("status")) || 
-    			(args[0].equals("status") && args.length != 8) ||
-    			((args[0].equals("deploy") || args[0].equals("validate")) && (args.length != 9 && args.length != 10))) {
-    		System.out.println("Usage:");
-    		System.out.println(" deploy/validate <username> <password> <client id> <tenant id> <subscription id> <resource group> <deployment name> <template file> [<parameters file>]");
-    		System.out.println(" status <username> <password> <client id> <tenant id> <subscription id> <resource group> <deployment name>");
-    		System.exit(1);
-    	}
 
-    	String username = null;
-    	String credential = null;
-    	String tenantId = null;
-    	String clientId = null;
-    	String subscriptionId = null;
-    	String resourceGroup = null;
-    	String resourceName = null;
-    	String templateFile = null;
-    	String parametersFile = null;
-    	
-    	int idx = 1;
-	    username = args[idx++];
-    	credential = args[idx++];
-    	clientId = args[idx++];
-    	tenantId = args[idx++];
-    	subscriptionId = args[idx++];
-    	resourceGroup = args[idx++];
-    	resourceName = args[idx++];
-    	if(args[0].equals("deploy") || args[0].equals("validate")) {
-    	    templateFile = args[idx++];
-    	    if(args.length == 10) {
-    	        parametersFile = args[idx++];
-    	    }
-    	}
-    	
+        String credential = "D4ta.automation.account";
+        String tenantId = "cb9bec90-76b1-4992-96fe-d8d470564931";
+        String clientId = "f6020be6-9ea9-4268-a1ac-876c5ab0dab7";
+        String subscriptionId = "9066859d-cbcd-4bc9-9f42-4f073763a256";
+        String resourceGroup = "RG-DEVTEST-NLP-NE01";
+        String resourceName = "HD-DEVTEST-NLP-NE01";
+        String templateFile = "/home/keerath/Documents/hd-deploy/parameters.json";
+        String parametersFile = "/home/keerath/Documents/hd-deploy/template.json";
+
         // use adal to Authenticate
         AuthenticationContext context = null;
         AuthenticationResult authResult = null;
         ExecutorService service = null;
-		try {
+        try {
             service = Executors.newFixedThreadPool(1);
             String url = AUTHORIZATION_ENDPOINT + tenantId + "/oauth2/authorize";
-            context = new AuthenticationContext(url, 
-                                                false, 
-                                                service);
+            context = new AuthenticationContext(url,
+                    false,
+                    service);
             Future<AuthenticationResult> future = null;
-            future = context.acquireToken(ARM_ENDPOINT, clientId, username, credential, null);
+            future = context.acquireToken(ARM_ENDPOINT, new ClientCredential(clientId, credential), null);
             authResult = future.get();
+            System.out.println("AUTH " + authResult.getAccessToken());
         } catch (Exception ex) {
-        	System.out.println("Exception occurred:");
-	        ex.printStackTrace();
+            System.out.println("Exception occurred:");
+            ex.printStackTrace();
             System.exit(1);
         } finally {
             service.shutdown();
         }
-        
+
         String apiVersion = "2015-01-01";
-        final String basePath =  "/subscriptions/" + subscriptionId +
-                                 "/resourcegroups/" + resourceGroup +
-                                 "/deployments/" + resourceName;
+        final String basePath = "/subscriptions/" + subscriptionId +
+                "/resourcegroups/" + resourceGroup +
+                "/deployments/" + resourceName;
 
         // handle deploy or validate
-        if(templateFile != null) {
+        if (templateFile != null) {
             // setup template
             ARMTemplate template = null;
             Json parameters = null;
             try {
                 URL tmp = new URL(templateFile);
                 template = ARMTemplate.fromUri(templateFile);
-            } catch(MalformedURLException ex) {
+            } catch (MalformedURLException ex) {
                 template = ARMTemplate.fromFile(templateFile);
             }
-            if(template == null) {
+            if (template == null) {
                 System.out.println("Unable to load template.  Template specified: " + templateFile);
                 System.exit(1);
             }
-            if(parametersFile != null) {
+            if (parametersFile != null) {
                 try {
                     URL tmp = new URL(parametersFile);
                     parameters = JsonUtils.jsonFromUri(parametersFile);
-                } catch(MalformedURLException ex) {
+                } catch (MalformedURLException ex) {
                     parameters = JsonUtils.jsonFromFile(parametersFile);
                 }
-                if(parameters == null) {
+                if (parameters == null) {
                     System.out.println("Unable to load parameters.  Parameters file specified: " + parametersFile);
                     System.exit(1);
                 } else {
                     template.addParameters(parameters);
                 }
             }
-            
+
             String path = null;
-            if(args[0].equals("deploy")) {
+            if (args[0].equals("deploy")) {
                 path = basePath + "?api-version=" + apiVersion;
             } else {
                 path = basePath + "/validate?api-version=" + apiVersion;
             }
-            boolean r = handleDeployOrValidateTemplate(args[0].equals("deploy"), 
-                                                       ARM_ENDPOINT + path,
-                                                       authResult.getAccessToken(),
-                                                       template.toString());
+            boolean r = handleDeployOrValidateTemplate(args[0].equals("deploy"),
+                    ARM_ENDPOINT + path,
+                    authResult.getAccessToken(),
+                    template.toString());
 
-            if(r) {
+            if (r) {
                 System.out.println("Template successfully " + (args[0].equals("deploy") ? "deployed" : "validated") + ".");
             } else {
-                System.out.println("Template unsuccessfully " + (args[0].equals("deploy") ? "deployed" : "validated") + ".");                
+                System.out.println("Template unsuccessfully " + (args[0].equals("deploy") ? "deployed" : "validated") + ".");
             }
             System.out.println("Template: " + templateFile);
         } else {
             // let's check the status
             String path = basePath + "?api-version=" + apiVersion;
             Json status = checkStatus(ARM_ENDPOINT + path, authResult.getAccessToken());
-            if(status != null) {
+            if (status != null) {
                 System.out.println("Status for deployment: " + resourceName);
                 System.out.println(status.toString());
             } else {
